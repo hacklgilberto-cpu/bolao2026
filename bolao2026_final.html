@@ -2093,37 +2093,6 @@ function renderPoolLinks() {
 <!-- Overrides mock doGoogle() and adds Firestore helpers -->
 <script src="firebase-config.js"></script>
 
-<!-- ═══ PAYPAL SDK ═══
-     Replace YOUR_PAYPAL_CLIENT_ID with your PayPal app's Client ID.
-     The onApprove handler calls the capturePaypalOrder Cloud Function.
-     Add this block wherever you render the PayPal button in the join modal.
-
-<script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD"></script>
-<script>
-paypal.Buttons({
-  createOrder: function(data, actions) {
-    const rounds = [...S.joinRounds];
-    const total  = rounds.reduce((s,id)=>{ const r=ROUNDS.find(x=>x.id===id); return s+(r?r.price:0); },0);
-    return actions.order.create({
-      purchase_units: [{ amount: { value: String(total) }, description: 'Bolão Copa 2026 — '+rounds.join(', ') }]
-    });
-  },
-  onApprove: async function(data, actions) {
-    // Call Cloud Function to capture server-side and write to payments/
-    const capturePaypal = firebase.functions().httpsCallable('capturePaypalOrder');
-    const result = await capturePaypal({ orderID: data.orderID, roundIds: [...S.joinRounds] });
-    if (result.data.success) {
-      toast(LANG==='pt' ? '💰 Pagamento confirmado! Aguarde aprovação.' : '💰 Payment confirmed! Awaiting approval.', 'green');
-      closeJoin();
-    }
-  },
-  onError: function(err) {
-    console.error('PayPal error:', err);
-    toast(LANG==='pt' ? 'Erro no pagamento PayPal' : 'PayPal payment error', 'red');
-  }
-}).render('#paypal-btn-container');
-</script>
--->
 
 </body>
 </html>

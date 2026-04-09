@@ -3,12 +3,12 @@
 // Replace the values below with your project from Firebase Console
 // ═══════════════════════════════════════════════════════════════
 const FIREBASE_CONFIG = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId:         "YOUR_PROJECT_ID",
-  storageBucket:     "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+  apiKey: "AIzaSyBaqATdq-C85-sx-xjIkTr-cdn_z4O8Agw",
+  authDomain: "wc2026-40589.firebaseapp.com",
+  projectId: "wc2026-40589",
+  storageBucket: "wc2026-40589.firebasestorage.app",
+  messagingSenderId: "11909315711",
+  appId: "1:11909315711:web:4e047c633d59f6d6b5134a"
 };
 
 firebase.initializeApp(FIREBASE_CONFIG);
@@ -112,29 +112,6 @@ async function saveResultFirestore(matchId, h, a) {
   } catch (err) {
     console.error('saveResult:', err);
     toast('Firestore error — result saved locally only', 'red');
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// RECORD PAYPAL PAYMENT
-// Call this inside the PayPal SDK onApprove() callback.
-// Writing to payments/ triggers the onPaymentCreated Cloud Function.
-// ═══════════════════════════════════════════════════════════════
-async function recordPaypalPayment({ orderID, payerName, payerEmail, roundIds, amount }) {
-  const user = auth.currentUser;
-  try {
-    await db.collection('payments').add({
-      orderID,
-      uid:        user ? user.uid : null,
-      payerName,
-      payerEmail,
-      roundIds,
-      amount,
-      status:     'captured',
-      createdAt:  firebase.firestore.FieldValue.serverTimestamp()
-    });
-  } catch (err) {
-    console.error('recordPayment:', err);
   }
 }
 
