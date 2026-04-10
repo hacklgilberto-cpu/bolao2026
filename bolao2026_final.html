@@ -741,6 +741,7 @@ footer{position:relative;overflow:hidden;margin-top:40px}
       </div>
       <select class="tz-sel" id="tzSel" onchange="setTz(this.value)"></select>
       <div id="authArea"><button class="btn-join" onclick="openJoin()" id="joinBtn" data-i18n="joinBtn">Entrar — $50 USD</button></div>
+      <button type="button" id="logoutBtn" onclick="doLogout()" style="display:none;background:none;border:1px solid rgba(255,255,255,.15);border-radius:4px;color:var(--muted);cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;padding:5px 10px;transition:all .15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='rgba(255,255,255,.15)';this.style.color='var(--muted)'">↩ SAIR</button>
       <button onclick="openAdmin()" style="background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;padding:2px 4px;opacity:.5">⚙</button>
     </div>
   </div>
@@ -841,7 +842,14 @@ footer{position:relative;overflow:hidden;margin-top:40px}
 // ══════════════════════════════════════════════
 const I18N = {
   pt: {
-    joinBtn:'Entrar — $50 USD', nextMatch:'Próximo jogo', tabSchedule:'Calendário',
+    joinBtn:'Entrar — $50 USD', logoutBtn:'↩ SAIR', nextMatch:'Próximo jogo', tabSchedule:'Calendário',
+    heroSub:'Dê seus palpites. Ganhe pontos. Leve o prêmio.',
+    heroJoin:'Entrar no Bolão — $50', heroRules:'Como funciona',
+    hsbTeams:'Seleções', hsbMatches:'Jogos', hsbCities:'Cidades Sede', hsbCountries:'Países', hsbPotLbl:'Pote Total', hsbDaysLbl:'Para o 1º Jogo',
+    ftTagline:'Um bolão de amigos para a Copa do Mundo 2026™',
+    ftSchedule:'Calendário', ftStandings:'Classificação', ftLeader:'Placar', ftRules:'Regras',
+    ftDisclaimer:'Este é um bolão informal entre amigos. Não é patrocinado, endossado ou afiliado à FIFA ou à Copa do Mundo 2026™.',
+    tabSchedule:'Calendário',
     tabStandings:'Classificação', tabLeader:'Placar', tabRules:'Regras',
     quickpicks:'Escolha seu palpite', cancel:'Cancelar', lockIn:'Salvar Palpite →',
     joinTitle:'⚽ Entrar no Bolão', step1label:'Passo 1 — Login',
@@ -885,7 +893,14 @@ const I18N = {
     activityFeed:'Atividade Recente',
   },
   en: {
-    joinBtn:'Join — $50', nextMatch:'Next match', tabSchedule:'Schedule',
+    joinBtn:'Join — $50', logoutBtn:'↩ SIGN OUT', nextMatch:'Next match', tabSchedule:'Schedule',
+    heroSub:'Predict the scores. Earn points. Win the pot.',
+    heroJoin:'Join the Bolão — $50', heroRules:'How it works',
+    hsbTeams:'Teams', hsbMatches:'Matches', hsbCities:'Host Cities', hsbCountries:'Countries', hsbPotLbl:'Total Pot', hsbDaysLbl:'To Match 1',
+    ftTagline:'A friendly sweepstake for the 2026 FIFA World Cup™',
+    ftSchedule:'Schedule', ftStandings:'Standings', ftLeader:'Leaderboard', ftRules:'Rules',
+    ftDisclaimer:'This is an informal sweepstake between friends. Not sponsored, endorsed, or affiliated with FIFA or the 2026 FIFA World Cup™.',
+    tabSchedule:'Schedule',
     tabStandings:'Standings', tabLeader:'Leaderboard', tabRules:'Rules',
     quickpicks:'Quick picks', cancel:'Cancel', lockIn:'Lock In →',
     joinTitle:'⚽ Join the Bolão', step1label:'Step 1 — Sign In',
@@ -928,12 +943,34 @@ function setLang(l){
   document.getElementById('langPT').classList.toggle('on',l==='pt');
   document.getElementById('langEN').classList.toggle('on',l==='en');
   document.documentElement.lang=l==='pt'?'pt-BR':'en';
-  // re-render everything
   applyI18n();
+  updateStaticText();
   renderRoundTabs();
   renderVenueGrid();
   renderPoolLinks();renderHero();buildDayStrip();renderCal();renderSidebar();
   renderGroups();renderFullLb();renderRules();updateTicker();
+}
+function updateStaticText(){
+  // Hero
+  const phSub=document.getElementById('phSub');if(phSub)phSub.textContent=t('heroSub');
+  const heroBtn=document.getElementById('heroJoinBtn');
+  if(heroBtn&&!S.user){heroBtn.textContent=t('heroJoin');heroBtn.onclick=openJoin;}
+  const heroRules=document.getElementById('heroRulesBtn');if(heroRules)heroRules.textContent=t('heroRules');
+  // Stats bar
+  const el=id=>document.getElementById(id);
+  if(el('hsbTeams'))el('hsbTeams').textContent=t('hsbTeams');
+  if(el('hsbMatches'))el('hsbMatches').textContent=t('hsbMatches');
+  if(el('hsbPotLbl'))el('hsbPotLbl').textContent=t('hsbPotLbl');
+  if(el('hsbDaysLbl'))el('hsbDaysLbl').textContent=t('hsbDaysLbl');
+  // Logout button
+  const lb=document.getElementById('logoutBtn');if(lb)lb.textContent=t('logoutBtn');
+  // Footer
+  if(el('ftTagline'))el('ftTagline').textContent=t('ftTagline');
+  if(el('ftLink0'))el('ftLink0').textContent=t('ftSchedule');
+  if(el('ftLink1'))el('ftLink1').textContent=t('ftStandings');
+  if(el('ftLink2'))el('ftLink2').textContent=t('ftLeader');
+  if(el('ftLink3'))el('ftLink3').textContent=t('ftRules');
+  if(el('ftDisclaimer'))el('ftDisclaimer').textContent=t('ftDisclaimer');
 }
 function applyI18n(){
   document.querySelectorAll('[data-i18n]').forEach(el=>{
@@ -1030,6 +1067,24 @@ const MATCHES = [
   {id:71,md:'md3',date:'2026-06-28T02:00:00Z',home:'Algeria',     away:'Austria'},
   {id:72,md:'md3',date:'2026-06-28T02:00:00Z',home:'Jordan',      away:'Argentina'},
 ];
+
+const TEAM_NAMES_PT = {
+  'Mexico':'México','South Africa':'África do Sul','South Korea':'Coreia do Sul',
+  'Czechia':'Tchéquia','Canada':'Canadá','Bosnia':'Bósnia','USA':'EUA',
+  'Paraguay':'Paraguai','Qatar':'Catar','Switzerland':'Suíça','Brazil':'Brasil',
+  'Morocco':'Marrocos','Haiti':'Haiti','Scotland':'Escócia','Australia':'Austrália',
+  'Türkiye':'Türkiye','Germany':'Alemanha','Netherlands':'Holanda','Japan':'Japão',
+  'Ivory Coast':'Costa do Marfim','Ecuador':'Equador','Sweden':'Suécia',
+  'Tunisia':'Tunísia','Spain':'Espanha','Cape Verde':'Cabo Verde','Belgium':'Bélgica',
+  'Egypt':'Egito','Saudi Arabia':'Arábia Saudita','Uruguay':'Uruguai',
+  'New Zealand':'Nova Zelândia','France':'França','Senegal':'Senegal',
+  'Iraq':'Iraque','Norway':'Noruega','Argentina':'Argentina','Algeria':'Argélia',
+  'Austria':'Áustria','Jordan':'Jordânia','Portugal':'Portugal','DR Congo':'RD Congo',
+  'England':'Inglaterra','Croatia':'Croácia','Ghana':'Gana','Panama':'Panamá',
+  'Colombia':'Colômbia','Uzbekistan':'Uzbequistão','Curaçao':'Curaçao',
+  'Iran':'Irã','TBD':'A Definir'
+};
+const tn=name=>LANG==='pt'?(TEAM_NAMES_PT[name]||name):name;
 
 const FLAGS = {
   'Mexico':'🇲🇽','South Africa':'🇿🇦','South Korea':'🇰🇷','Czechia':'🇨🇿','Canada':'🇨🇦','Bosnia':'🇧🇦','USA':'🇺🇸','Paraguay':'🇵🇾','Qatar':'🇶🇦','Switzerland':'🇨🇭','Brazil':'🇧🇷','Morocco':'🇲🇦','Haiti':'🇭🇹','Scotland':'🏴󠁧󠁢󠁳󠁣󠁴󠁿','Australia':'🇦🇺','Türkiye':'🇹🇷','Germany':'🇩🇪','Curaçao':'🇨🇼','Netherlands':'🇳🇱','Japan':'🇯🇵','Ivory Coast':'🇨🇮','Ecuador':'🇪🇨','Sweden':'🇸🇪','Tunisia':'🇹🇳','Spain':'🇪🇸','Cape Verde':'🇨🇻','Belgium':'🇧🇪','Egypt':'🇪🇬','Saudi Arabia':'🇸🇦','Uruguay':'🇺🇾','Iran':'🇮🇷','New Zealand':'🇳🇿','France':'🇫🇷','Senegal':'🇸🇳','Iraq':'🇮🇶','Norway':'🇳🇴','Argentina':'🇦🇷','Algeria':'🇩🇿','Austria':'🇦🇹','Jordan':'🇯🇴','Portugal':'🇵🇹','DR Congo':'🇨🇩','England':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','Croatia':'🇭🇷','Ghana':'🇬🇭','Panama':'🇵🇦','Uzbekistan':'🇺🇿','Colombia':'🇨🇴','TBD':'🌍'
@@ -1225,7 +1280,7 @@ function renderMatchCard(m,cfg,now){
   const predHtml=pred?`<div style="display:flex;align-items:center;gap:4px"><span class="pred-tag">${pred.h}–${pred.a}</span>${v!==null?`<span class="pts-chip ${ptsCls}">${ptsLbl}</span>`:''}</div>`:lk?`<span style="font-size:10px;color:var(--muted);font-style:italic">${LANG==='pt'?'Palpite encerrado':'Locked'}</span>`:canPred?`<span class="pred-prompt">${LANG==='pt'?'+ Dar Palpite':'+ Predict'}</span>`:S.user?`<span style="font-size:10px;color:var(--muted);font-style:italic">${LANG==='pt'?'Não inscrito':'Not enrolled'}</span>`:`<span style="font-size:10px;color:var(--muted)">—</span>`;
   return`<div class="mcard${lk&&!live?' locked':''}" style="border-left-color:${bc}" onclick="handleCard(${m.id})">
     <div class="mc-top">${live?`<span class="live-dot">${t('live')}</span>`:fmtTime(m.date)}${res?`<span style="margin-left:4px;color:var(--gold)">${res.h}–${res.a}</span>`:''}</div>
-    <div class="mc-teams"><span class="mc-flag">${fl(m.home)}</span><span>${m.home}</span><span class="mc-vs">vs</span><span>${m.away}</span><span class="mc-flag">${fl(m.away)}</span></div>
+    <div class="mc-teams"><span class="mc-flag">${fl(m.home)}</span><span>${tn(m.home)}</span><span class="mc-vs">vs</span><span>${tn(m.away)}</span><span class="mc-flag">${fl(m.away)}</span></div>
     <div class="mc-bot"><span style="font-size:10px;color:var(--muted)">${cfg.short}</span>${predHtml}</div>
   </div>`;
 }
@@ -1468,12 +1523,12 @@ function openDrawer(id){
   if(S.user&&S.preds[id])allPreds.push({name:S.user.name,pred:S.preds[id],isMe:true});
   const ranked=allPreds.filter(p=>p.pred).map(p=>({...p,pts:res?pts(p.pred,res):null})).sort((a,b)=>(b.pts||0)-(a.pts||0));
   const scoreHtml=res?`<div class="md-sc">${res.h}<span class="md-sc-sep">–</span>${res.a}</div>`:`<div class="md-upcoming">${LANG==='pt'?'A Jogar':'Upcoming'}</div>`;
-  document.getElementById('drawerTi').textContent=`${m.home} vs ${m.away}`;
+  document.getElementById('drawerTi').textContent=`${tn(m.home)} vs ${tn(m.away)}`;
   document.getElementById('drawerBd').innerHTML=`
     <div class="md-board">
-      <div class="md-team"><div class="md-flag">${fl(m.home)}</div><div class="md-tn">${m.home}</div></div>
+      <div class="md-team"><div class="md-flag">${fl(m.home)}</div><div class="md-tn">${tn(m.home)}</div></div>
       ${scoreHtml}
-      <div class="md-team"><div class="md-flag">${fl(m.away)}</div><div class="md-tn">${m.away}</div></div>
+      <div class="md-team"><div class="md-flag">${fl(m.away)}</div><div class="md-tn">${tn(m.away)}</div></div>
     </div>
     <div class="md-chips">
       <span class="md-chip">📅 ${fmtDayShort(m.date)}</span>
@@ -1500,8 +1555,8 @@ function openPred(id){
   S.predId=id;const p=S.preds[id]||{h:1,a:1};S.pH=p.h;S.pA=p.a;
   const cfg=rc(m.md);
   document.getElementById('predStripe').style.background=cfg.color;
-  document.getElementById('predTi').textContent=`${m.home} vs ${m.away}`;
-  document.getElementById('predTeams').innerHTML=`<div class="pm-tm"><div class="pm-fl">${fl(m.home)}</div><div class="pm-nm">${m.home}</div></div><div class="pm-vs">VS</div><div class="pm-tm"><div class="pm-fl">${fl(m.away)}</div><div class="pm-nm">${m.away}</div></div>`;
+  document.getElementById('predTi').textContent=`${tn(m.home)} vs ${tn(m.away)}`;
+  document.getElementById('predTeams').innerHTML=`<div class="pm-tm"><div class="pm-fl">${fl(m.home)}</div><div class="pm-nm">${tn(m.home)}</div></div><div class="pm-vs">VS</div><div class="pm-tm"><div class="pm-fl">${fl(m.away)}</div><div class="pm-nm">${tn(m.away)}</div></div>`;
   document.getElementById('qpBtns').innerHTML=QP.map(([h,a])=>`<button class="qp-btn" onclick="setQP(${h},${a})">${h}–${a}</button>`).join('');
   updPred();document.getElementById('predOv').classList.add('on');
 }
@@ -1558,14 +1613,14 @@ function renderPsm(){
       if(lk){
         // locked — show existing prediction read-only
         html+=`<div class="psm-row">
-          <div class="psm-lbl"><div class="psm-date">${fmtDayShort(m.date)} ${fmtTime(m.date)}</div><div class="psm-teams">${fl(m.home)} ${m.home} <span class="psm-sep">vs</span> ${m.away} ${fl(m.away)}</div></div>
+          <div class="psm-lbl"><div class="psm-date">${fmtDayShort(m.date)} ${fmtTime(m.date)}</div><div class="psm-teams">${fl(m.home)} ${tn(m.home)} <span class="psm-sep">vs</span> ${tn(m.away)} ${fl(m.away)}</div></div>
           ${pred?`<span class="pred-tag">${pred.h}–${pred.a}</span>${ptsHtml}`:`<span class="psm-lock">${LANG==='pt'?'Sem palpite':'No pick'}</span>`}
           ${res?`<span style="font-size:11px;color:var(--muted);margin-left:4px">(${res.h}–${res.a})</span>`:''}
         </div>`;
       } else {
         const h=pred?pred.h:'';const a=pred?pred.a:'';
         html+=`<div class="psm-row">
-          <div class="psm-lbl"><div class="psm-date">${fmtDayShort(m.date)} ${fmtTime(m.date)}</div><div class="psm-teams">${fl(m.home)} ${m.home} <span class="psm-sep">vs</span> ${m.away} ${fl(m.away)}</div></div>
+          <div class="psm-lbl"><div class="psm-date">${fmtDayShort(m.date)} ${fmtTime(m.date)}</div><div class="psm-teams">${fl(m.home)} ${tn(m.home)} <span class="psm-sep">vs</span> ${tn(m.away)} ${fl(m.away)}</div></div>
           <div style="display:flex;align-items:center;gap:5px">
             <input type="number" class="psm-in" id="ph-${m.id}" min="0" max="20" value="${h}" placeholder="–" oninput="psmAutoSave(${m.id})">
             <span class="psm-sep">–</span>
@@ -1694,7 +1749,8 @@ function activatePlayer(name, email, rounds) {
   S.user = {name, email: email||'', rounds: rounds||[...S.joinRounds]};
   closeJoin();
   document.getElementById('authArea').innerHTML =
-    '<div class="user-chip" onclick="openJoin()"><div class="uav">'+name[0].toUpperCase()+'</div><span>'+name+'</span></div>';
+    '<div class="user-chip" onclick="openPredSummary()"><div class="uav">'+name[0].toUpperCase()+'</div><span>'+name+'</span></div>';
+  const lb=document.getElementById('logoutBtn');if(lb)lb.style.display='block';
   // Update hero CTA to go straight to predictions
   const heroBtn=document.getElementById('heroJoinBtn');
   if(heroBtn){
@@ -1705,6 +1761,18 @@ function activatePlayer(name, email, rounds) {
   toast(LANG==='pt' ? '🏆 Bem-vindo '+name+'!' : '🏆 Welcome '+name+'!', 'green');
 }
 const userHasRound=md=>!!(S.user&&Array.isArray(S.user.rounds)&&S.user.rounds.includes(md));
+function doLogout(){
+  if(typeof firebase!=='undefined'&&firebase.auth){
+    firebase.auth().signOut().catch(()=>{});
+  }
+  S.user=null;S.preds={};
+  document.getElementById('authArea').innerHTML='<button class="btn-join" onclick="openJoin()" id="joinBtn" data-i18n="joinBtn">'+t('joinBtn')+'</button>';
+  const lb=document.getElementById('logoutBtn');if(lb)lb.style.display='none';
+  const heroBtn=document.getElementById('heroJoinBtn');
+  if(heroBtn){heroBtn.textContent=LANG==='pt'?'Entrar no Bolão — $50':'Join the Bolão — $50';heroBtn.onclick=openJoin;}
+  renderHero();renderCal();renderSidebar();
+  toast(LANG==='pt'?'Sessão encerrada':'Signed out','');
+}
 
 window._demoLogin=()=>activatePlayer('Gil','gil@example.com');
 
@@ -1728,7 +1796,7 @@ async function adminSaveRounds(uid,name){
 // ══════════════════════════════════════════════
 // ADMIN
 // ══════════════════════════════════════════════
-const ADMIN_PW='copa2026';
+const ADMIN_PW='@thos20,';
 function openAdmin(){document.getElementById('adminOv').classList.add('on')}
 function closeAdmin(){document.getElementById('adminOv').classList.remove('on')}
 function checkPass(){
@@ -1792,6 +1860,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   // keyboard: ` opens admin
   document.addEventListener('keydown',e=>{if(e.key==='`')openAdmin()});
   // init all
+  updateStaticText();
   renderRoundTabs();renderHero();buildDayStrip();renderCal();renderSidebar();
   updateTicker();
   setInterval(updateCountdown,1000);
@@ -2247,18 +2316,17 @@ function renderPoolLinks() {
         <div class="footer-tagline" id="ftTagline">Um bolão de amigos para a Copa do Mundo 2026™</div>
       </div>
       <div class="footer-links">
-        <span class="footer-link" onclick="showView('schedule',document.querySelector('.vtab'))">Calendário</span>
-        <span class="footer-link" onclick="showView('standings',document.querySelectorAll('.vtab')[1])">Classificação</span>
-        <span class="footer-link" onclick="showView('leaderboard',document.querySelectorAll('.vtab')[2])">Placar</span>
-        <span class="footer-link" onclick="showView('rules',document.querySelectorAll('.vtab')[3])">Regras</span>
+        <span id="ftLink0" class="footer-link" onclick="showView('schedule',document.querySelector('.vtab'))">Calendário</span>
+        <span id="ftLink1" class="footer-link" onclick="showView('standings',document.querySelectorAll('.vtab')[1])">Classificação</span>
+        <span id="ftLink2" class="footer-link" onclick="showView('leaderboard',document.querySelectorAll('.vtab')[2])">Placar</span>
+        <span id="ftLink3" class="footer-link" onclick="showView('rules',document.querySelectorAll('.vtab')[3])">Regras</span>
         <span class="footer-link" onclick="openAdmin()">Admin</span>
       </div>
     </div>
     <hr class="footer-divider">
     <div class="footer-bottom">
-      <div class="footer-disclaimer">
-        Este é um bolão informal entre amigos. Não é patrocinado, endossado ou afiliado à FIFA ou à Copa do Mundo 2026™. 
-        "FIFA World Cup 2026™" é marca registrada da FIFA.
+      <div id="ftDisclaimer" class="footer-disclaimer">
+        Este é um bolão informal entre amigos. Não é patrocinado, endossado ou afiliado à FIFA ou à Copa do Mundo 2026™.
       </div>
       <div>© 2026 Bolão Copa 2026 · Feito com ⚽</div>
     </div>
