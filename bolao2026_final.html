@@ -417,6 +417,31 @@ header{position:sticky;top:0;z-index:200;background:linear-gradient(90deg,rgba(1
 .btn-apr:hover{background:var(--gold);color:#000}
 .btn-round-toggle{padding:2px 7px;border-radius:3px;border:1px solid var(--b2);background:transparent;color:var(--muted);cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;transition:all .12s}
 .btn-round-toggle.active{font-weight:800}
+/* ══════════════ PREDICTION SUMMARY MODAL ══════════════ */
+.psm-ov{position:fixed;inset:0;z-index:550;background:rgba(0,0,0,.85);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s}
+.psm-ov.on{opacity:1;pointer-events:all}
+.psm-modal{background:var(--navy);border:1px solid var(--b2);border-radius:12px;width:100%;max-width:560px;max-height:90vh;display:flex;flex-direction:column;transform:scale(.97);transition:transform .2s}
+.psm-ov.on .psm-modal{transform:none}
+.psm-hd{padding:12px 18px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.psm-ti{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--gold)}
+.psm-body{overflow-y:auto;flex:1;padding:14px 18px}
+.psm-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);flex-wrap:wrap}
+.psm-row:last-child{border:none}
+.psm-lbl{flex:1;font-size:12px;font-weight:600;min-width:130px}
+.psm-date{font-size:10px;color:var(--muted);margin-bottom:2px}
+.psm-teams{display:flex;align-items:center;gap:5px}
+.psm-in{width:36px;text-align:center;padding:4px;background:var(--card);border:1px solid var(--b2);color:var(--gold);border-radius:3px;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:800;outline:none}
+.psm-in:focus{border-color:var(--gold)}
+.psm-in:disabled{opacity:.4;cursor:not-allowed;color:var(--muted)}
+.psm-sep{color:#4E6278;font-size:13px}
+.psm-saved{font-size:10px;color:var(--green);font-weight:600;display:none}
+.psm-lock{font-size:10px;color:var(--muted);font-style:italic;padding:2px 8px}
+.psm-pts{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;padding:1px 6px;border-radius:3px;min-width:32px;text-align:center}
+.psm-ft{padding:12px 18px;border-top:1px solid var(--b1);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+.psm-progress{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-right:auto}
+.psm-prog-bar{width:80px;height:4px;background:var(--b1);border-radius:2px;overflow:hidden}
+.psm-prog-f{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--gold),var(--green));transition:width .4s}
+
 .admin-pass-wrap{display:flex;gap:8px;margin-bottom:12px}
 .admin-pass-in{flex:1;padding:8px 12px;background:var(--card);border:1px solid var(--b2);color:var(--text);border-radius:5px;font-family:'Barlow Condensed',sans-serif;font-size:14px;outline:none;letter-spacing:2px}
 .admin-pass-in:focus{border-color:var(--red)}
@@ -618,6 +643,22 @@ footer{position:relative;overflow:hidden;margin-top:40px}
       <div class="pts-prev" id="ptsPrev"></div>
     </div>
     <div class="mft"><button class="btn-ghost" onclick="closePred()" data-i18n="cancel">Cancelar</button><button class="btn-primary" onclick="savePred()" data-i18n="lockIn">Salvar Palpite →</button></div>
+  </div>
+</div>
+
+<!-- ═══ PREDICTION SUMMARY MODAL ═══ -->
+<div class="psm-ov" id="psmOv" onclick="closeOnBg(event,'psmOv')">
+  <div class="psm-modal">
+    <div class="psm-hd">
+      <div class="psm-ti" id="psmTi">⚽ Meus Palpites</div>
+      <button type="button" class="mx" onclick="closePsm()">×</button>
+    </div>
+    <div class="psm-body" id="psmBody"></div>
+    <div class="psm-ft">
+      <div class="psm-progress"><div class="psm-prog-bar"><div class="psm-prog-f" id="psmProgF"></div></div><span id="psmProgLbl"></span></div>
+      <button type="button" class="btn-ghost" onclick="closePsm()" data-i18n="cancel">Cancelar</button>
+      <button type="button" class="btn-primary" onclick="savePsmAll()">💾 Salvar Todos →</button>
+    </div>
   </div>
 </div>
 
@@ -1482,6 +1523,97 @@ function savePred(){
 }
 
 // ══════════════════════════════════════════════
+// PREDICTION SUMMARY MODAL
+// ══════════════════════════════════════════════
+function openPredSummary(){
+  if(!S.user){openJoin();return;}
+  renderPsm();
+  document.getElementById('psmOv').classList.add('on');
+}
+function closePsm(){document.getElementById('psmOv').classList.remove('on')}
+function renderPsm(){
+  const enrolledRounds=(S.user.rounds||[]);
+  const now=new Date();
+  // Gather matches for all enrolled rounds, sorted by date
+  const matches=MATCHES.filter(m=>enrolledRounds.includes(m.md)).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const total=matches.length;
+  const filled=matches.filter(m=>S.preds[m.id]).length;
+  // Update header and progress
+  document.getElementById('psmTi').textContent=LANG==='pt'?'⚽ Meus Palpites':'⚽ My Predictions';
+  document.getElementById('psmProgF').style.width=total?Math.round(filled/total*100)+'%':'0%';
+  document.getElementById('psmProgLbl').textContent=`${filled}/${total}`;
+  // Group by round
+  let html='';
+  enrolledRounds.forEach(rid=>{
+    const cfg=rc(rid);if(!cfg)return;
+    const ms=matches.filter(m=>m.md===rid);if(!ms.length)return;
+    html+=`<div class="admin-sec" style="color:${cfg.color}">${rname(rid)}</div>`;
+    ms.forEach(m=>{
+      const lk=new Date(m.date)<=now;
+      const pred=S.preds[m.id];
+      const res=S.results[m.id];
+      const v=pred&&res?pts(pred,res):null;
+      const ptsCls=v===5?'p5':v===3?'p3':v===1?'p1':v===0?'p0':'';
+      const ptsHtml=v!==null?`<span class="psm-pts ${ptsCls}">${v===5?'⚽+5':v===3?'✓+3':v===1?'~+1':'✗'}</span>`:'';
+      if(lk){
+        // locked — show existing prediction read-only
+        html+=`<div class="psm-row">
+          <div class="psm-lbl"><div class="psm-date">${fmtDayShort(m.date)} ${fmtTime(m.date)}</div><div class="psm-teams">${fl(m.home)} ${m.home} <span class="psm-sep">vs</span> ${m.away} ${fl(m.away)}</div></div>
+          ${pred?`<span class="pred-tag">${pred.h}–${pred.a}</span>${ptsHtml}`:`<span class="psm-lock">${LANG==='pt'?'Sem palpite':'No pick'}</span>`}
+          ${res?`<span style="font-size:11px;color:var(--muted);margin-left:4px">(${res.h}–${res.a})</span>`:''}
+        </div>`;
+      } else {
+        const h=pred?pred.h:'';const a=pred?pred.a:'';
+        html+=`<div class="psm-row">
+          <div class="psm-lbl"><div class="psm-date">${fmtDayShort(m.date)} ${fmtTime(m.date)}</div><div class="psm-teams">${fl(m.home)} ${m.home} <span class="psm-sep">vs</span> ${m.away} ${fl(m.away)}</div></div>
+          <div style="display:flex;align-items:center;gap:5px">
+            <input type="number" class="psm-in" id="ph-${m.id}" min="0" max="20" value="${h}" placeholder="–" oninput="psmAutoSave(${m.id})">
+            <span class="psm-sep">–</span>
+            <input type="number" class="psm-in" id="pa-${m.id}" min="0" max="20" value="${a}" placeholder="–" oninput="psmAutoSave(${m.id})">
+            <span class="psm-saved" id="ps-${m.id}">✓</span>
+          </div>
+        </div>`;
+      }
+    });
+  });
+  document.getElementById('psmBody').innerHTML=html||`<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">${LANG==='pt'?'Nenhuma rodada inscrita.':'No enrolled rounds.'}</div>`;
+}
+function psmAutoSave(id){
+  const hEl=document.getElementById('ph-'+id),aEl=document.getElementById('pa-'+id);
+  if(!hEl||!aEl)return;
+  const h=parseInt(hEl.value),a=parseInt(aEl.value);
+  if(isNaN(h)||isNaN(a)||h<0||a<0)return;
+  S.preds[id]={h,a};
+  const sv=document.getElementById('ps-'+id);if(sv){sv.style.display='inline';setTimeout(()=>sv.style.display='none',1200);}
+  if(typeof savePredFirestore==='function')savePredFirestore(id,h,a);
+  // Refresh progress bar
+  const enrolledRounds=(S.user.rounds||[]);
+  const matches=MATCHES.filter(m=>enrolledRounds.includes(m.md));
+  const filled=matches.filter(m=>S.preds[m.id]).length;
+  const total=matches.length;
+  const pf=document.getElementById('psmProgF'),pl=document.getElementById('psmProgLbl');
+  if(pf)pf.style.width=total?Math.round(filled/total*100)+'%':'0%';
+  if(pl)pl.textContent=`${filled}/${total}`;
+}
+function savePsmAll(){
+  const now=new Date();
+  let saved=0,skipped=0;
+  MATCHES.forEach(m=>{
+    if(!userHasRound(m.md)||new Date(m.date)<=now)return;
+    const hEl=document.getElementById('ph-'+m.id),aEl=document.getElementById('pa-'+m.id);
+    if(!hEl||!aEl)return;
+    const h=parseInt(hEl.value),a=parseInt(aEl.value);
+    if(isNaN(h)||isNaN(a)||h<0||a<0){skipped++;return;}
+    S.preds[m.id]={h,a};
+    if(typeof savePredFirestore==='function')savePredFirestore(m.id,h,a);
+    saved++;
+  });
+  renderCal();renderHero();renderSidebar();
+  closePsm();
+  toast(saved>0?(LANG==='pt'?`✓ ${saved} palpites salvos`:`✓ ${saved} picks saved`)+(skipped>0?` (${skipped} ${LANG==='pt'?'incompletos':'incomplete'})`:''): (LANG==='pt'?'Nenhum palpite novo':'No new picks'),'green');
+}
+
+// ══════════════════════════════════════════════
 // JOIN MODAL
 // ══════════════════════════════════════════════
 function openJoin(){
@@ -1567,7 +1699,7 @@ function activatePlayer(name, email, rounds) {
   const heroBtn=document.getElementById('heroJoinBtn');
   if(heroBtn){
     heroBtn.textContent=LANG==='pt'?'⚽ Meus Palpites':'⚽ My Predictions';
-    heroBtn.onclick=()=>{document.querySelectorAll('.vtab')[0].click();window.scrollTo({top:(document.querySelector('.view-tabs')||{offsetTop:0}).offsetTop-60,behavior:'smooth'})};
+    heroBtn.onclick=openPredSummary;
   }
   renderHero(); renderCal(); renderSidebar();
   toast(LANG==='pt' ? '🏆 Bem-vindo '+name+'!' : '🏆 Welcome '+name+'!', 'green');
