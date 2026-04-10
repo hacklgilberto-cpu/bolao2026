@@ -71,7 +71,7 @@ function listenForApproval(uid, name) {
   db.collection('users').doc(uid).onSnapshot(snap => {
     const data = snap.data();
     if (data && data.status === 'active') {
-      activatePlayer(data.name || name, data.email || googleUserEmail);
+      activatePlayer(data.name || name, data.email || googleUserEmail, data.activeRounds || []);
     }
   });
 }
@@ -122,8 +122,9 @@ async function saveResultFirestore(matchId, h, a) {
 // ═══════════════════════════════════════════════════════════════
 async function approvePlayerFirestore(uid, roundIds) {
   try {
+    const hasRounds = roundIds && roundIds.length > 0;
     await db.collection('users').doc(uid).update({
-      status:      'active',
+      status:      hasRounds ? 'active' : 'pending',
       activeRounds: roundIds || [],
       approvedAt:  firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -172,7 +173,7 @@ auth.onAuthStateChanged(user => {
   db.collection('users').doc(user.uid).get().then(snap => {
     const data = snap.data();
     if (data && data.status === 'active' && !S.user) {
-      activatePlayer(data.name || user.displayName, data.email);
+      activatePlayer(data.name || user.displayName, data.email, data.activeRounds || []);
     }
   });
 });

@@ -415,6 +415,8 @@ header{position:sticky;top:0;z-index:200;background:linear-gradient(90deg,rgba(1
 .st-pend{background:rgba(255,107,0,.1);color:#FF6B00;border:1px solid rgba(255,107,0,.3)}
 .btn-apr{padding:2px 8px;border-radius:3px;border:1px solid var(--gold);background:transparent;color:var(--gold);cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;transition:all .12s}
 .btn-apr:hover{background:var(--gold);color:#000}
+.btn-round-toggle{padding:2px 7px;border-radius:3px;border:1px solid var(--b2);background:transparent;color:var(--muted);cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;transition:all .12s}
+.btn-round-toggle.active{font-weight:800}
 .admin-pass-wrap{display:flex;gap:8px;margin-bottom:12px}
 .admin-pass-in{flex:1;padding:8px 12px;background:var(--card);border:1px solid var(--b2);color:var(--text);border-radius:5px;font-family:'Barlow Condensed',sans-serif;font-size:14px;outline:none;letter-spacing:2px}
 .admin-pass-in:focus{border-color:var(--red)}
@@ -1178,14 +1180,15 @@ function renderMatchCard(m,cfg,now){
   const v=pred&&res?pts(pred,res):null;
   const ptsCls=v===5?'p5':v===3?'p3':v===1?'p1':v===0?'p0':'';
   const ptsLbl=v===5?'⚽+5':v===3?'✓+3':v===1?'~+1':v===0?'✗':null;
-  const predHtml=pred?`<div style="display:flex;align-items:center;gap:4px"><span class="pred-tag">${pred.h}–${pred.a}</span>${v!==null?`<span class="pts-chip ${ptsCls}">${ptsLbl}</span>`:''}</div>`:lk?`<span style="font-size:10px;color:var(--muted);font-style:italic">${LANG==='pt'?'Palpite encerrado':'Locked'}</span>`:S.user?`<span class="pred-prompt">${LANG==='pt'?'+ Dar Palpite':'+ Predict'}</span>`:`<span style="font-size:10px;color:var(--muted)">—</span>`;
+  const canPred=!lk&&userHasRound(m.md);
+  const predHtml=pred?`<div style="display:flex;align-items:center;gap:4px"><span class="pred-tag">${pred.h}–${pred.a}</span>${v!==null?`<span class="pts-chip ${ptsCls}">${ptsLbl}</span>`:''}</div>`:lk?`<span style="font-size:10px;color:var(--muted);font-style:italic">${LANG==='pt'?'Palpite encerrado':'Locked'}</span>`:canPred?`<span class="pred-prompt">${LANG==='pt'?'+ Dar Palpite':'+ Predict'}</span>`:S.user?`<span style="font-size:10px;color:var(--muted);font-style:italic">${LANG==='pt'?'Não inscrito':'Not enrolled'}</span>`:`<span style="font-size:10px;color:var(--muted)">—</span>`;
   return`<div class="mcard${lk&&!live?' locked':''}" style="border-left-color:${bc}" onclick="handleCard(${m.id})">
     <div class="mc-top">${live?`<span class="live-dot">${t('live')}</span>`:fmtTime(m.date)}${res?`<span style="margin-left:4px;color:var(--gold)">${res.h}–${res.a}</span>`:''}</div>
     <div class="mc-teams"><span class="mc-flag">${fl(m.home)}</span><span>${m.home}</span><span class="mc-vs">vs</span><span>${m.away}</span><span class="mc-flag">${fl(m.away)}</span></div>
     <div class="mc-bot"><span style="font-size:10px;color:var(--muted)">${cfg.short}</span>${predHtml}</div>
   </div>`;
 }
-function handleCard(id){const m=MATCHES.find(x=>x.id===id);if(!m)return;if(!isLocked(m)&&S.user)openPred(id);else openDrawer(id)}
+function handleCard(id){const m=MATCHES.find(x=>x.id===id);if(!m)return;if(!isLocked(m)&&userHasRound(m.md))openPred(id);else openDrawer(id)}
 
 // ══════════════════════════════════════════════
 // SIDEBAR
@@ -1452,6 +1455,7 @@ function openPred(id){
   if(!S.user){openJoin();return}
   const m=MATCHES.find(x=>x.id===id);
   if(!m||isLocked(m)){toast(LANG==='pt'?'Previsão bloqueada':'Locked at kickoff','red');return}
+  if(!userHasRound(m.md)){toast(LANG==='pt'?'Você não está inscrito nesta rodada':'Not enrolled in this round','red');return}
   S.predId=id;const p=S.preds[id]||{h:1,a:1};S.pH=p.h;S.pA=p.a;
   const cfg=rc(m.md);
   document.getElementById('predStripe').style.background=cfg.color;
@@ -1480,7 +1484,31 @@ function savePred(){
 // ══════════════════════════════════════════════
 // JOIN MODAL
 // ══════════════════════════════════════════════
-function openJoin(){renderRoundPicks();document.getElementById('joinOv').classList.add('on');setTimeout(renderPoolLinks,10)}
+function openJoin(){
+  if(S.user){
+    // Active user: show "My Rounds" status instead of the sign-up flow
+    const mbd=document.querySelector('#joinOv .join-mbd');
+    if(mbd){
+      const rds=S.user.rounds||[];
+      const poolRounds=ROUNDS.filter(r=>['md1','md2','md3','r32','r16','qf','sf'].includes(r.id));
+      mbd.innerHTML=`<div class="step">
+        <div class="step-n">${LANG==='pt'?'Meus Bolões':'My Pools'}</div>
+        <div class="step-su">${LANG==='pt'?'Rodadas confirmadas pelo organizador:':'Rounds confirmed by the organizer:'}</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+          ${poolRounds.map(r=>{const paid=rds.includes(r.id);return`<div class="rp-item${paid?' on':''}"><div class="rp-dot" style="background:${r.color}"></div><div style="flex:1"><div class="rp-nm">${r.name[LANG]||r.name.pt}</div></div>${paid?`<span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:800;color:#3DD68C;background:rgba(0,165,80,.15);padding:2px 8px;border-radius:3px;border:1px solid rgba(0,165,80,.3)">✓ ${LANG==='pt'?'PAGO':'PAID'}</span>`:`<span style="font-size:10px;color:var(--muted)">—</span>`}</div>`;}).join('')}
+        </div>
+      </div>
+      <div style="margin-top:14px;font-size:11px;color:var(--muted);text-align:center;padding:10px;background:var(--card);border-radius:6px;border:1px solid var(--b1)">
+        ${LANG==='pt'?'Para adicionar rodadas, entre em contato com o organizador.':'To add rounds, contact the organizer.'}
+      </div>`;
+    }
+    document.getElementById('joinOv').classList.add('on');
+    return;
+  }
+  renderRoundPicks();
+  document.getElementById('joinOv').classList.add('on');
+  setTimeout(renderPoolLinks,10);
+}
 function closeJoin(){document.getElementById('joinOv').classList.remove('on')}
 function renderRoundPicks(){
   const ispt = LANG==='pt';
@@ -1530,25 +1558,38 @@ function onPaymentOk(name){
 }
 
 // Activate player after organizer confirms PayPal Pool payment
-function activatePlayer(name, email) {
-  S.user = {name, email: email||'', rounds:[...S.joinRounds]};
+function activatePlayer(name, email, rounds) {
+  S.user = {name, email: email||'', rounds: rounds||[...S.joinRounds]};
   closeJoin();
   document.getElementById('authArea').innerHTML =
     '<div class="user-chip" onclick="openJoin()"><div class="uav">'+name[0].toUpperCase()+'</div><span>'+name+'</span></div>';
+  // Update hero CTA to go straight to predictions
+  const heroBtn=document.getElementById('heroJoinBtn');
+  if(heroBtn){
+    heroBtn.textContent=LANG==='pt'?'⚽ Meus Palpites':'⚽ My Predictions';
+    heroBtn.onclick=()=>{document.querySelectorAll('.vtab')[0].click();window.scrollTo({top:(document.querySelector('.view-tabs')||{offsetTop:0}).offsetTop-60,behavior:'smooth'})};
+  }
   renderHero(); renderCal(); renderSidebar();
   toast(LANG==='pt' ? '🏆 Bem-vindo '+name+'!' : '🏆 Welcome '+name+'!', 'green');
 }
+const userHasRound=md=>!!(S.user&&Array.isArray(S.user.rounds)&&S.user.rounds.includes(md));
 
 window._demoLogin=()=>activatePlayer('Gil','gil@example.com');
 
-// Admin approve helper — calls Firestore (firebase-config.js) or falls back to UI-only
-async function adminApprove(uid, name){
+// Per-round toggle in admin panel
+function toggleAdminRound(uid,rid,btn,color){
+  const on=btn.classList.toggle('active');
+  btn.style.borderColor=on?color:'var(--b2)';
+  btn.style.color=on?color:'var(--muted)';
+  btn.style.background=on?color+'22':'transparent';
+}
+// Save selected rounds for a player
+async function adminSaveRounds(uid,name){
+  const row=document.getElementById('apl-'+uid);if(!row)return;
+  const rounds=[...row.querySelectorAll('.btn-round-toggle.active')].map(b=>b.dataset.rid);
   if(typeof approvePlayerFirestore==='function'){
-    const ok=await approvePlayerFirestore(uid,[...S.joinRounds]);
-    if(ok) toast((name||uid)+' approved ✓','green');
-    renderAdmin(); // refresh list
-  } else {
-    toast((name||uid)+' approved ✓','green');
+    const ok=await approvePlayerFirestore(uid,rounds);
+    if(ok){toast((name||uid)+' saved ✓','green');renderAdmin();}
   }
 }
 
@@ -1578,7 +1619,13 @@ function renderAdmin(){
     loadPlayersForAdmin().then(players=>{
       const pl=document.getElementById('adminPlayers');if(!pl)return;
       if(!players.length){pl.innerHTML=`<div style="color:var(--muted);font-size:11px;padding:8px 0">${LANG==='pt'?'Nenhum jogador ainda.':'No players yet.'}</div>`;return;}
-      pl.innerHTML=players.map(p=>`<div class="apl-row"><div style="flex:1"><div class="apl-nm">${p.name||p.email||p.uid}</div><div class="apl-em">${p.email||''}</div></div><span class="apl-st ${p.status==='active'?'st-paid':'st-pend'}">${p.status==='active'?'✓ Active':'Pending'}</span>${p.status!=='active'?`<button class="btn-apr" onclick="adminApprove('${p.uid}','${(p.name||'').replace(/'/g,'')}')">${LANG==='pt'?'Aprovar':'Approve'}</button>`:''}</div>`).join('');
+      const poolRds=ROUNDS.filter(r=>['md1','md2','md3','r32','r16','qf','sf'].includes(r.id));
+      pl.innerHTML=players.map(p=>{
+        const active=p.activeRounds||[];
+        const safeName=(p.name||'').replace(/'/g,'').replace(/"/g,'');
+        const roundBtns=poolRds.map(r=>{const on=active.includes(r.id);return`<button class="btn-round-toggle${on?' active':''}" data-rid="${r.id}" style="border-color:${on?r.color:'var(--b2)'};color:${on?r.color:'var(--muted)'};background:${on?r.color+'22':'transparent'}" onclick="toggleAdminRound('${p.uid}','${r.id}',this,'${r.color}')">${r.short}</button>`;}).join('');
+        return`<div class="apl-row" id="apl-${p.uid}" style="flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:140px"><div class="apl-nm">${p.name||p.email||p.uid}</div><div class="apl-em">${p.email||''}</div></div><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">${roundBtns}<button class="btn-apr" onclick="adminSaveRounds('${p.uid}','${safeName}')">${LANG==='pt'?'Salvar':'Save'}</button></div></div>`;
+      }).join('');
     }).catch(()=>{const pl=document.getElementById('adminPlayers');if(pl)pl.innerHTML=`<div style="color:var(--red);font-size:11px;padding:8px 0">Firestore error — check console</div>`;});
   }
 }
