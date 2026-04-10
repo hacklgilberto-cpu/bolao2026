@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"console.log\\(process.version\\)\")",
+      "Bash(npm -v)",
+      "Bash(npm install:*)"
+    ]
+  }
+}
